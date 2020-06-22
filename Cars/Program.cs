@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -17,10 +18,14 @@ namespace Cars
         {
             Console.WriteLine("Hello");
 
+            #region Setup
+            
             var cars = ProcessCars("fuel.csv");
             var manufacturers = ProcessManufacturers("manufacturers.csv");
+            
+            #endregion
 
-
+            #region LINQJoiningEtc
             ////returns an IEnumerable<Car>
             //var query = cars.Join(manufacturers,
             //                      c => new { c.Manufacturer, c.Year },
@@ -121,12 +126,65 @@ namespace Cars
             //                    .OrderBy(c => c);
 
 
-            //XML Stuff
-            CreateXml();
-            QueryXML();
+
+            #endregion
+
+            #region XMLStuff
+            
+            //CreateXml();
+            //QueryXML();
+
+            #endregion
+
+
+            #region EntityFramework
+
+            Database.SetInitializer(new DropCreateDatabaseIfModelChanges<CarDb>());      //this is only used for this example and isn't best practice
+            InsertData();
+            QueryData();
+
+            #endregion
 
             Console.WriteLine("Goodbye");
 
+        }
+
+        private static void QueryData()
+        {
+            var db = new CarDb();
+
+            //this will log the SQL query that has been sent to the db
+            db.Database.Log = Console.WriteLine;
+
+            var query = db.Cars.Where(c => c.Manufacturer == "BMW")
+                                            .OrderByDescending(c => c.Combined)
+                                            .ThenBy(c => c.Name)
+                                            .Take(10);
+
+            foreach (var car in query.ToList())
+            {
+                Console.WriteLine($"{car.Name}: {car.Combined}");
+            }
+        }
+
+        private static void InsertData()
+        {
+            var cars = ProcessCars("fuel.csv");
+            
+            var db = new CarDb();
+
+            //this will log the SQL query that has been sent to the db
+            db.Database.Log = Console.WriteLine;
+
+            if (!db.Cars.Any())
+            {
+                foreach (var car in cars)
+                {
+                    db.Cars.Add(car);
+                }
+
+                db.SaveChanges();
+            }
         }
 
         private static void QueryXML()
